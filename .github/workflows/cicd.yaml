@@ -104,6 +104,11 @@ jobs:
 
       # 5. Build and Push Docker Image
       # Note: Consider updating docker actions to v3 later
+
+      - name: Show current directory
+        run: |
+          pwd
+          ls -l
       - name: Build and push Docker image
         uses: docker/build-push-action@v2
         with:
