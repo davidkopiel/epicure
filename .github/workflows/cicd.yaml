@@ -30,8 +30,8 @@ jobs:
           username: ${{ secrets.ARTIFACTORY_USER }}
           password: ${{ secrets.ARTIFACTORY_PASSWORD }}
 
-- name: Debug Image Name and Tag Construction
-  id: image_meta # Keep the same ID so subsequent steps work
+      - name: Debug Image Name and Tag Construction
+        id: image_meta # Keep the same ID so subsequent steps work
   env:
     # Explicitly load vars/secrets into env for clarity (secrets will still be masked)
     DEBUG_ARTIFACTORY_URL: ${{ secrets.ARTIFACTORY_URL }}
