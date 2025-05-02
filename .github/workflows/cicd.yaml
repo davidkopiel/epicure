@@ -30,17 +30,70 @@ jobs:
           username: ${{ secrets.ARTIFACTORY_USER }}
           password: ${{ secrets.ARTIFACTORY_PASSWORD }}
 
-      # 4. Define Image Name and Tag
-      - name: Set Image Name and Tag
-        id: image_meta
-        run: |
-          IMAGE_TAG=${{ github.sha }}
-          IMAGE_NAME="${{ secrets.ARTIFACTORY_URL }}/${{ vars.ARTIFACTORY_DOCKER_REPO }}/my-react-app" # Replace 'my-react-app' if needed
-          echo "image_name=${IMAGE_NAME}" >> $GITHUB_OUTPUT
-          echo "image_tag=${IMAGE_TAG}" >> $GITHUB_OUTPUT
-          echo "full_image_name=${IMAGE_NAME}:${IMAGE_TAG}" >> $GITHUB_OUTPUT
-          echo "Image will be tagged as: ${IMAGE_NAME}:${IMAGE_TAG}"
+- name: Debug Image Name and Tag Construction
+  id: image_meta # Keep the same ID so subsequent steps work
+  env:
+    # Explicitly load vars/secrets into env for clarity (secrets will still be masked)
+    DEBUG_ARTIFACTORY_URL: ${{ secrets.ARTIFACTORY_URL }}
+    DEBUG_ARTIFACTORY_DOCKER_REPO: ${{ vars.ARTIFACTORY_DOCKER_REPO }}
+    DEBUG_APP_NAME: "my-react-app" # Assuming this is fixed
+    DEBUG_IMAGE_TAG_SHA: ${{ github.sha }}
+  run: |
+    echo "--- Debugging Workflow Values ---"
+    echo ""
+    echo "[DEBUG] 1. Checking secrets.ARTIFACTORY_URL (will be masked):"
+    echo "Value: [${DEBUG_ARTIFACTORY_URL}]"
+    echo "Character dump:"
+    echo "${DEBUG_ARTIFACTORY_URL}" | od -c || echo "od command failed"
+    echo ""
 
+    echo "[DEBUG] 2. Checking vars.ARTIFACTORY_DOCKER_REPO (should NOT be masked):"
+    echo "Value: [${DEBUG_ARTIFACTORY_DOCKER_REPO}]"
+    echo "Character dump:"
+    echo "${DEBUG_ARTIFACTORY_DOCKER_REPO}" | od -c || echo "od command failed"
+    echo "Length: ${#DEBUG_ARTIFACTORY_DOCKER_REPO}" # Check length reported by shell
+    echo ""
+
+    echo "[DEBUG] 3. Checking Hardcoded App Name:"
+    echo "Value: [${DEBUG_APP_NAME}]"
+    echo "Character dump:"
+    echo "${DEBUG_APP_NAME}" | od -c || echo "od command failed"
+    echo "Length: ${#DEBUG_APP_NAME}"
+    echo ""
+
+    echo "[DEBUG] 4. Checking Git SHA Tag:"
+    echo "Value: [${DEBUG_IMAGE_TAG_SHA}]"
+    echo "Character dump:"
+    echo "${DEBUG_IMAGE_TAG_SHA}" | od -c || echo "od command failed"
+    echo "Length: ${#DEBUG_IMAGE_TAG_SHA}"
+    echo ""
+
+    echo "[DEBUG] 5. Combining the parts:"
+    URL_PART="${DEBUG_ARTIFACTORY_URL}"
+    REPO_PART="${DEBUG_ARTIFACTORY_DOCKER_REPO}"
+    APP_PART="${DEBUG_APP_NAME}"
+    TAG_PART="${DEBUG_IMAGE_TAG_SHA}"
+    COMBINED_TAG="${URL_PART}/${REPO_PART}/${APP_PART}:${TAG_PART}"
+    echo "Raw Combined Tag: [${COMBINED_TAG}]" # URL part will be masked
+    echo "Combined Tag Character dump:"
+    echo "${COMBINED_TAG}" | od -c || echo "od command failed"
+    echo ""
+    echo "--- End Debugging ---"
+    echo ""
+
+    # --- Original Output Generation Logic ---
+    IMAGE_NAME="${URL_PART}/${REPO_PART}/${APP_PART}"
+    IMAGE_TAG="${TAG_PART}"
+    FULL_IMAGE_NAME="${IMAGE_NAME}:${IMAGE_TAG}"
+    echo "Setting output image_name: [${IMAGE_NAME}]" # Masked
+    echo "Setting output image_tag: [${IMAGE_TAG}]"
+    echo "Setting output full_image_name: [${FULL_IMAGE_NAME}]" # Masked
+    echo "image_name=${IMAGE_NAME}" >> $GITHUB_OUTPUT
+    echo "image_tag=${IMAGE_TAG}" >> $GITHUB_OUTPUT
+    echo "full_image_name=${FULL_IMAGE_NAME}" >> $GITHUB_OUTPUT
+
+    # This is the final output the next step uses, mimicking the original log message
+    echo "Image will be tagged as: ${FULL_IMAGE_NAME}"
 # 5. Build and Push Docker Image
       - name: Build and push Docker image
         uses: docker/build-push-action@v5
