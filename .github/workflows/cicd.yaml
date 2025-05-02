@@ -17,30 +17,32 @@ jobs:
         uses: actions/checkout@v4
 
       # 2. Set up Docker Buildx (recommended for build enhancements)
+      # Note: Consider updating docker actions to v3 later
       - name: Set up QEMU
-        uses: docker/setup-qemu-action@v2 # Downgraded to stable v2
+        uses: docker/setup-qemu-action@v2
       - name: Set up Docker Buildx
-        uses: docker/setup-buildx-action@v2 # Downgraded to stable v2
+        uses: docker/setup-buildx-action@v2
 
       # 3. Login to Artifactory Docker Registry
+      # Note: Consider updating docker actions to v3 later
       - name: Log in to Artifactory Docker Registry
-        uses: docker/login-action@v2 # Downgraded to stable v2
+        uses: docker/login-action@v2
         with:
           registry: ${{ secrets.ARTIFACTORY_URL }}
           username: ${{ secrets.ARTIFACTORY_USER }}
           password: ${{ secrets.ARTIFACTORY_PASSWORD }}
 
-      # 4. Define Image Name and Tag
+      # 4. Define Image Name and Tag (with Debugging and Fixed Outputs)
       - name: Debug Image Name and Tag Construction
         id: image_meta # Keep the same ID so subsequent steps work
         env:
-    # Explicitly load vars/secrets into env for clarity (secrets will still be masked)
+          # Explicitly load vars/secrets into env for clarity (secrets will still be masked)
           DEBUG_ARTIFACTORY_URL: ${{ secrets.ARTIFACTORY_URL }}
           DEBUG_ARTIFACTORY_DOCKER_REPO: ${{ vars.ARTIFACTORY_DOCKER_REPO }}
           DEBUG_APP_NAME: "my-react-app" # Assuming this is fixed
           DEBUG_IMAGE_TAG_SHA: ${{ github.sha }}
         run: |
-          echo "--- Debugging Workflow Values ---"   
+          echo "--- Debugging Workflow Values ---"
           echo ""
           echo "[DEBUG] 1. Checking secrets.ARTIFACTORY_URL (will be masked):"
           echo "Value: [${DEBUG_ARTIFACTORY_URL}]"
@@ -82,18 +84,33 @@ jobs:
           echo "--- End Debugging ---"
           echo ""
 
+          # --- Fix Applied Here: Assign variables and Set Outputs ---
+          IMAGE_NAME="${URL_PART}/${REPO_PART}/${APP_PART}"
+          IMAGE_TAG="${TAG_PART}"
+          FULL_IMAGE_NAME="${IMAGE_NAME}:${IMAGE_TAG}"
 
-    # This is the final output the next step uses, mimicking the original log message
-    echo "Image will be tagged as: ${FULL_IMAGE_NAME}"
+          echo "Setting output image_name: [${IMAGE_NAME}]" # Masked
+          echo "Setting output image_tag: [${IMAGE_TAG}]"
+          echo "Setting output full_image_name: [${FULL_IMAGE_NAME}]" # Masked
+
+          # These lines write the values to the step's outputs for other steps to use
+          echo "image_name=${IMAGE_NAME}" >> $GITHUB_OUTPUT
+          echo "image_tag=${IMAGE_TAG}" >> $GITHUB_OUTPUT
+          echo "full_image_name=${FULL_IMAGE_NAME}" >> $GITHUB_OUTPUT
+          # --- Fix End ---
+
+          # This final echo just confirms what should be used next (optional, but good for logs)
+          echo "Image will be tagged as: ${FULL_IMAGE_NAME}"
 
       # 5. Build and Push Docker Image
+      # Note: Consider updating docker actions to v3 later
       - name: Build and push Docker image
-        uses: docker/build-push-action@v2 # Downgraded to stable v2
+        uses: docker/build-push-action@v2
         with:
           context: .
           file: ./Dockerfile
           push: true
-          tags: ${{ steps.image_meta.outputs.full_image_name }}
+          tags: ${{ steps.image_meta.outputs.full_image_name }} # This now receives the correct value
           build-args: |
             NPM_TOKEN=${{ secrets.ARTIFACTORY_NPM_TOKEN }}
           # Optional: Enable caching to speed up builds
@@ -101,8 +118,9 @@ jobs:
           # cache-to: type=gha,mode=max
 
       # 6. Set up Kubeconfig for kubectl
+      # Note: Consider updating azure/k8s-set-context to v4 later
       - name: Set up Kubeconfig
-        uses: azure/k8s-set-context@v1 # Downgraded to stable v1
+        uses: azure/k8s-set-context@v1
         with:
           method: kubeconfig
           kubeconfig: ${{ secrets.KUBECONFIG_BASE64 }}
