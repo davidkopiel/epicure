@@ -1,0 +1,22 @@
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: my-react-app-deployment # Choose a name for your deployment
+  labels:
+    app: my-react-app
+spec:
+  replicas: 2 # Or your desired number of pods
+  selector:
+    matchLabels:
+      app: my-react-app
+  template:
+    metadata:
+      labels:
+        app: my-react-app
+    spec:
+      containers:
+      - name: my-react-app-container
+        # IMPORTANT: Use a placeholder for the image name and tag
+        image: __IMAGE_NAME__
+        ports:
+        - containerPort: 3000 # The port exposed in your Dockerfile
