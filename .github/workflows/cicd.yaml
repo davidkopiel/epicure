@@ -18,105 +18,51 @@ jobs:
 
       # 2. Set up Docker Buildx (recommended for build enhancements)
       - name: Set up QEMU
-        uses: docker/setup-qemu-action@v3
+        uses: docker/setup-qemu-action@v2 # Downgraded to stable v2
       - name: Set up Docker Buildx
-        uses: docker/setup-buildx-action@v3
+        uses: docker/setup-buildx-action@v2 # Downgraded to stable v2
 
       # 3. Login to Artifactory Docker Registry
       - name: Log in to Artifactory Docker Registry
-        uses: docker/login-action@v3
+        uses: docker/login-action@v2 # Downgraded to stable v2
         with:
           registry: ${{ secrets.ARTIFACTORY_URL }}
           username: ${{ secrets.ARTIFACTORY_USER }}
           password: ${{ secrets.ARTIFACTORY_PASSWORD }}
 
-      - name: Debug Image Name and Tag Construction
-        id: image_meta # Keep the same ID so subsequent steps work
-  env:
-    # Explicitly load vars/secrets into env for clarity (secrets will still be masked)
-    DEBUG_ARTIFACTORY_URL: ${{ secrets.ARTIFACTORY_URL }}
-    DEBUG_ARTIFACTORY_DOCKER_REPO: ${{ vars.ARTIFACTORY_DOCKER_REPO }}
-    DEBUG_APP_NAME: "my-react-app" # Assuming this is fixed
-    DEBUG_IMAGE_TAG_SHA: ${{ github.sha }}
-  run: |
-    echo "--- Debugging Workflow Values ---"
-    echo ""
-    echo "[DEBUG] 1. Checking secrets.ARTIFACTORY_URL (will be masked):"
-    echo "Value: [${DEBUG_ARTIFACTORY_URL}]"
-    echo "Character dump:"
-    echo "${DEBUG_ARTIFACTORY_URL}" | od -c || echo "od command failed"
-    echo ""
+      # 4. Define Image Name and Tag
+      - name: Set Image Name and Tag
+        id: image_meta
+        run: |
+          IMAGE_TAG=${{ github.sha }}
+          IMAGE_NAME="${{ secrets.ARTIFACTORY_URL }}/${{ vars.ARTIFACTORY_DOCKER_REPO }}/my-react-app" # Replace 'my-react-app' if needed
+          echo "image_name=${IMAGE_NAME}" >> $GITHUB_OUTPUT
+          echo "image_tag=${IMAGE_TAG}" >> $GITHUB_OUTPUT
+          echo "full_image_name=${IMAGE_NAME}:${IMAGE_TAG}" >> $GITHUB_OUTPUT
+          echo "Image will be tagged as: ${IMAGE_NAME}:${IMAGE_TAG}"
 
-    echo "[DEBUG] 2. Checking vars.ARTIFACTORY_DOCKER_REPO (should NOT be masked):"
-    echo "Value: [${DEBUG_ARTIFACTORY_DOCKER_REPO}]"
-    echo "Character dump:"
-    echo "${DEBUG_ARTIFACTORY_DOCKER_REPO}" | od -c || echo "od command failed"
-    echo "Length: ${#DEBUG_ARTIFACTORY_DOCKER_REPO}" # Check length reported by shell
-    echo ""
-
-    echo "[DEBUG] 3. Checking Hardcoded App Name:"
-    echo "Value: [${DEBUG_APP_NAME}]"
-    echo "Character dump:"
-    echo "${DEBUG_APP_NAME}" | od -c || echo "od command failed"
-    echo "Length: ${#DEBUG_APP_NAME}"
-    echo ""
-
-    echo "[DEBUG] 4. Checking Git SHA Tag:"
-    echo "Value: [${DEBUG_IMAGE_TAG_SHA}]"
-    echo "Character dump:"
-    echo "${DEBUG_IMAGE_TAG_SHA}" | od -c || echo "od command failed"
-    echo "Length: ${#DEBUG_IMAGE_TAG_SHA}"
-    echo ""
-
-    echo "[DEBUG] 5. Combining the parts:"
-    URL_PART="${DEBUG_ARTIFACTORY_URL}"
-    REPO_PART="${DEBUG_ARTIFACTORY_DOCKER_REPO}"
-    APP_PART="${DEBUG_APP_NAME}"
-    TAG_PART="${DEBUG_IMAGE_TAG_SHA}"
-    COMBINED_TAG="${URL_PART}/${REPO_PART}/${APP_PART}:${TAG_PART}"
-    echo "Raw Combined Tag: [${COMBINED_TAG}]" # URL part will be masked
-    echo "Combined Tag Character dump:"
-    echo "${COMBINED_TAG}" | od -c || echo "od command failed"
-    echo ""
-    echo "--- End Debugging ---"
-    echo ""
-
-    # --- Original Output Generation Logic ---
-    IMAGE_NAME="${URL_PART}/${REPO_PART}/${APP_PART}"
-    IMAGE_TAG="${TAG_PART}"
-    FULL_IMAGE_NAME="${IMAGE_NAME}:${IMAGE_TAG}"
-    echo "Setting output image_name: [${IMAGE_NAME}]" # Masked
-    echo "Setting output image_tag: [${IMAGE_TAG}]"
-    echo "Setting output full_image_name: [${FULL_IMAGE_NAME}]" # Masked
-    echo "image_name=${IMAGE_NAME}" >> $GITHUB_OUTPUT
-    echo "image_tag=${IMAGE_TAG}" >> $GITHUB_OUTPUT
-    echo "full_image_name=${FULL_IMAGE_NAME}" >> $GITHUB_OUTPUT
-
-    # This is the final output the next step uses, mimicking the original log message
-    echo "Image will be tagged as: ${FULL_IMAGE_NAME}"
-# 5. Build and Push Docker Image
+      # 5. Build and Push Docker Image
       - name: Build and push Docker image
-        uses: docker/build-push-action@v5
+        uses: docker/build-push-action@v2 # Downgraded to stable v2
         with:
           context: .
           file: ./Dockerfile
           push: true
           tags: ${{ steps.image_meta.outputs.full_image_name }}
-          # Pass the secret NPM token as a build argument
           build-args: |
             NPM_TOKEN=${{ secrets.ARTIFACTORY_NPM_TOKEN }}
           # Optional: Enable caching to speed up builds
           # cache-from: type=gha
           # cache-to: type=gha,mode=max
+
       # 6. Set up Kubeconfig for kubectl
       - name: Set up Kubeconfig
-        uses: azure/k8s-set-context@v4
+        uses: azure/k8s-set-context@v1 # Downgraded to stable v1
         with:
           method: kubeconfig
           kubeconfig: ${{ secrets.KUBECONFIG_BASE64 }}
 
       # 7. Update Kubernetes Manifest with the new Image Tag
-      # This step assumes your deployment.yaml has '__IMAGE_NAME__' as a placeholder
       - name: Update Kubernetes deployment image
         run: |
           echo "Updating deployment manifest with image: ${{ steps.image_meta.outputs.full_image_name }}"
