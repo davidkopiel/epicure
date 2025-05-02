@@ -112,8 +112,8 @@ jobs:
       - name: Build and push Docker image
         uses: docker/build-push-action@v2
         with:
-          context: .
-          file: ./Dockerfile
+          context: ./epicure
+          file: ./epicure/Dockerfile
           push: true
           tags: ${{ steps.image_meta.outputs.full_image_name }} # This now receives the correct value
           build-args: |
